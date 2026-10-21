@@ -1,14 +1,16 @@
 import os
 
-
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 
+from rag.rerank import rerank
+
 load_dotenv()  # reads GROQ_API_KEY from the .env file
 
 LLM_MODEL = "openai/gpt-oss-120b"
-TOP_K = 3  # how many chunks to retrieve per question
+TOP_K = 3       # how many chunks the LLM receives
+FETCH_K = 20    # how many candidates are re-ranked to find those chunks
 
 PROMPT = ChatPromptTemplate.from_messages([
     (
@@ -28,9 +30,12 @@ def get_llm():
     return ChatGroq(model=LLM_MODEL, temperature=0)
 
 
-def retrieve(question, vector_store, k=TOP_K):
-    """Find the k chunks most similar in meaning to the question."""
-    return vector_store.similarity_search(question, k=k)
+def retrieve(question, retriever, reranker=None, k=TOP_K):
+    """Hybrid search for candidates, then re-rank and keep the best k."""
+    candidates = retriever.hybrid_search(question, k=FETCH_K, fetch=30)
+    if reranker is None:
+        return candidates[:k]
+    return rerank(question, candidates, reranker, top_k=k)
 
 
 def format_context(docs):
@@ -43,12 +48,15 @@ def format_context(docs):
     return "\n\n---\n\n".join(parts)
 
 
-def answer_question(question, vector_store, llm=None):
-    """Full RAG: retrieve chunks, ask the LLM, return answer + sources."""
+def answer_question(question, retriever, reranker=None, llm=None):
+    """Full RAG: retrieve chunks, ask the LLM.
+
+    Returns (answer text, list of source labels, list of retrieved chunks).
+    """
     if llm is None:
         llm = get_llm()
 
-    docs = retrieve(question, vector_store)
+    docs = retrieve(question, retriever, reranker)
     context = format_context(docs)
 
     chain = PROMPT | llm
@@ -62,4 +70,4 @@ def answer_question(question, vector_store, llm=None):
         if label not in sources:
             sources.append(label)
 
-    return response.content, sources
+    return response.content, sources, docs
