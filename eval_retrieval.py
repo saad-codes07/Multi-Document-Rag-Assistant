@@ -4,6 +4,7 @@ from rag.loader import load_pdf, split_documents
 from rag.vectorstore import get_embeddings
 from rag.hybrid import build_hybrid_retriever
 from eval_set import TESTS
+from rag.rerank import load_reranker, rerank
 
 PDF_FILES = ["data/paper.pdf", "data/bert.pdf"]
 MAX_RANK = 20  # each method returns this many chunks for scoring
@@ -66,12 +67,19 @@ def main():
     print(f"{len(valid_tests)} of {len(TESTS)} questions are usable.")
 
     retriever = build_hybrid_retriever(chunks, get_embeddings())
+    reranker = load_reranker()
 
     methods = {
         "dense only (current system)": lambda q: retriever.dense_search(q, MAX_RANK),
         "BM25 only (keywords)": lambda q: retriever.bm25_search(q, MAX_RANK),
         "HYBRID (dense + BM25 with RRF)": lambda q: retriever.hybrid_search(
             q, k=MAX_RANK, fetch=30
+        ),
+        "dense + RERANK": lambda q: rerank(
+            q, retriever.dense_search(q, 20), reranker, top_k=MAX_RANK
+        ),
+        "HYBRID + RERANK": lambda q: rerank(
+            q, retriever.hybrid_search(q, k=20, fetch=30), reranker, top_k=MAX_RANK
         ),
     }
 
