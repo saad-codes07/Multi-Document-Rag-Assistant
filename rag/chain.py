@@ -2,25 +2,46 @@ import os
 
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from rag.rerank import rerank
 
 load_dotenv()  # reads GROQ_API_KEY from the .env file
 
 LLM_MODEL = "openai/gpt-oss-120b"
-TOP_K = 3       # how many chunks the LLM receives
-FETCH_K = 20    # how many candidates are re-ranked to find those chunks
+TOP_K = 3               # how many chunks the LLM receives
+FETCH_K = 20            # how many candidates are re-ranked to find those chunks
+MAX_HISTORY_TURNS = 4   # how many past question/answer pairs are remembered
 
+# Prompt that answers the question from the retrieved chunks
 PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
-        "You are a helpful assistant that answers questions about a document.\n"
+        "You are a helpful assistant that answers questions about the user's documents.\n"
         "Use ONLY the context below to answer. Do not use outside knowledge.\n"
+        "The chat history is only there to help you understand follow-up "
+        "questions. Never use it as a source of facts.\n"
         "If the answer is not in the context, reply exactly: "
         "\"I couldn't find that in the document.\"\n\n"
         "Context:\n{context}",
     ),
+    MessagesPlaceholder("history"),
+    ("human", "{question}"),
+])
+
+# Prompt that turns a follow-up question into a standalone question
+REWRITE_PROMPT = ChatPromptTemplate.from_messages([
+    (
+        "system",
+        "Given the chat history and a follow-up question, rewrite the follow-up "
+        "as a standalone question that can be understood without the chat history. "
+        "Include the specific names, terms and numbers from the history that the "
+        "question refers to. Do not answer the question and do not add new "
+        "information. If the question is already standalone, return it unchanged. "
+        "Return ONLY the rewritten question.",
+    ),
+    MessagesPlaceholder("history"),
     ("human", "{question}"),
 ])
 
@@ -28,6 +49,28 @@ PROMPT = ChatPromptTemplate.from_messages([
 def get_llm():
     """Create the LLM connection."""
     return ChatGroq(model=LLM_MODEL, temperature=0)
+
+
+def to_messages(history, max_turns=MAX_HISTORY_TURNS):
+    """Turn our history (a list of {'role', 'content'} dicts) into the message
+    objects LangChain expects, keeping only the most recent turns."""
+    messages = []
+    for item in history[-2 * max_turns:]:
+        if item["role"] == "user":
+            messages.append(HumanMessage(content=item["content"]))
+        else:
+            messages.append(AIMessage(content=item["content"]))
+    return messages
+
+
+def condense_question(question, history, llm):
+    """Rewrite a follow-up question into a standalone one (if there is history)."""
+    messages = to_messages(history)
+    if not messages:
+        return question
+    chain = REWRITE_PROMPT | llm
+    result = chain.invoke({"history": messages, "question": question})
+    return result.content.strip() or question
 
 
 def retrieve(question, retriever, reranker=None, k=TOP_K):
@@ -48,19 +91,29 @@ def format_context(docs):
     return "\n\n---\n\n".join(parts)
 
 
-def answer_question(question, retriever, reranker=None, llm=None):
-    """Full RAG: retrieve chunks, ask the LLM.
+def answer_question(question, retriever, reranker=None, llm=None, history=None):
+    """Full RAG with conversation memory.
 
-    Returns (answer text, list of source labels, list of retrieved chunks).
+    Returns a dictionary with:
+      answer              - the answer text
+      sources             - list of "file, page N" labels
+      docs                - the retrieved chunks
+      standalone_question - the question as it was actually searched
     """
     if llm is None:
         llm = get_llm()
+    history = history or []
 
-    docs = retrieve(question, retriever, reranker)
+    standalone = condense_question(question, history, llm)
+    docs = retrieve(standalone, retriever, reranker)
     context = format_context(docs)
 
     chain = PROMPT | llm
-    response = chain.invoke({"context": context, "question": question})
+    response = chain.invoke({
+        "context": context,
+        "history": to_messages(history),
+        "question": question,
+    })
 
     sources = []
     for doc in docs:
@@ -70,4 +123,9 @@ def answer_question(question, retriever, reranker=None, llm=None):
         if label not in sources:
             sources.append(label)
 
-    return response.content, sources, docs
+    return {
+        "answer": response.content,
+        "sources": sources,
+        "docs": docs,
+        "standalone_question": standalone,
+    }

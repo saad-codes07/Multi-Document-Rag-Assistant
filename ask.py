@@ -15,6 +15,8 @@ retriever = build_hybrid_retriever(chunks, get_embeddings())
 reranker = load_reranker()
 llm = get_llm()
 
+history = []  # the conversation so far
+
 print("Ask questions about your PDFs. Type 'quit' to exit.")
 
 while True:
@@ -25,6 +27,12 @@ while True:
     if not question:
         continue
 
-    answer, sources, docs = answer_question(question, retriever, reranker, llm)
-    print("\nAI:", answer)
-    print("Sources:", "; ".join(sources))
+    result = answer_question(question, retriever, reranker, llm, history)
+
+    if result["standalone_question"] != question:
+        print(f"\n(searched for: {result['standalone_question']})")
+    print("\nAI:", result["answer"])
+    print("Sources:", "; ".join(result["sources"]))
+
+    history.append({"role": "user", "content": question})
+    history.append({"role": "assistant", "content": result["answer"]})
