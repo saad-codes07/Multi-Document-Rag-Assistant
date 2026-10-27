@@ -22,6 +22,7 @@ PROMPT = ChatPromptTemplate.from_messages([
         "Use ONLY the context below to answer. Do not use outside knowledge.\n"
         "The chat history is only there to help you understand follow-up "
         "questions. Never use it as a source of facts.\n"
+        "Write formulas and symbols in plain text, not LaTeX.\n"
         "If the answer is not in the context, reply exactly: "
         "\"I couldn't find that in the document.\"\n\n"
         "Context:\n{context}",
@@ -36,10 +37,11 @@ REWRITE_PROMPT = ChatPromptTemplate.from_messages([
         "system",
         "Given the chat history and a follow-up question, rewrite the follow-up "
         "as a standalone question that can be understood without the chat history. "
-        "Include the specific names, terms and numbers from the history that the "
-        "question refers to. Do not answer the question and do not add new "
-        "information. If the question is already standalone, return it unchanged. "
-        "Return ONLY the rewritten question.",
+        "Use only the context the follow-up actually needs, mainly from the most "
+        "recent topic. Include the specific names, terms and numbers from the "
+        "history that the question refers to. Do not answer the question and do "
+        "not add new information. If the question is already standalone, return "
+        "it unchanged. Return ONLY the rewritten question.",
     ),
     MessagesPlaceholder("history"),
     ("human", "{question}"),
@@ -80,9 +82,9 @@ def condense_question(question, history, llm):
     return result.content.strip() or question
 
 
-def retrieve(question, retriever, reranker=None, k=TOP_K):
+def retrieve(question, retriever, reranker=None, k=TOP_K, files=None):
     """Hybrid search for candidates, then re-rank and keep the best k."""
-    candidates = retriever.hybrid_search(question, k=FETCH_K, fetch=30)
+    candidates = retriever.hybrid_search(question, k=FETCH_K, fetch=30, files=files)
     if reranker is None:
         return candidates[:k]
     return rerank(question, candidates, reranker, top_k=k)
@@ -98,8 +100,9 @@ def format_context(docs):
     return "\n\n---\n\n".join(parts)
 
 
-def answer_question(question, retriever, reranker=None, llm=None, history=None):
-    """Full RAG with conversation memory.
+def answer_question(question, retriever, reranker=None, llm=None,
+                    history=None, files=None):
+    """Full RAG with conversation memory and an optional file filter.
 
     Returns a dictionary with:
       answer              - the answer text
@@ -112,7 +115,7 @@ def answer_question(question, retriever, reranker=None, llm=None, history=None):
     history = history or []
 
     standalone = condense_question(question, history, llm)
-    docs = retrieve(standalone, retriever, reranker)
+    docs = retrieve(standalone, retriever, reranker, files=files)
     context = format_context(docs)
 
     chain = PROMPT | llm
