@@ -46,9 +46,16 @@ REWRITE_PROMPT = ChatPromptTemplate.from_messages([
 ])
 
 
-def get_llm():
-    """Create the LLM connection."""
-    return ChatGroq(model=LLM_MODEL, temperature=0)
+def get_llm(reasoning_effort=None):
+    """Create the LLM connection.
+
+    reasoning_effort ("low", "medium" or "high") controls how long the model
+    thinks before answering. Lower is faster.
+    """
+    options = {}
+    if reasoning_effort:
+        options["reasoning_effort"] = reasoning_effort
+    return ChatGroq(model=LLM_MODEL, temperature=0, **options)
 
 
 def to_messages(history, max_turns=MAX_HISTORY_TURNS):
