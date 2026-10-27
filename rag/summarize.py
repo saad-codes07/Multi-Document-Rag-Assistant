@@ -1,13 +1,15 @@
 import os
 import time
 import unicodedata
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from langchain_core.prompts import ChatPromptTemplate
 
-BATCH_CHARS = 20000     # how much text goes into one LLM call
-COMBINE_CHARS = 12000   # max size of the notes combined in one reduce call
-MAX_PARALLEL = 3        # how many LLM calls run at the same time
+BATCH_CHARS = 9000        # text per LLM call (about 2,700 tokens)
+COMBINE_CHARS = 9000      # max size of the notes merged in one call
+TPM_BUDGET = 7500         # stay under the free-tier limit of 8,000 tokens/minute
+CHARS_PER_TOKEN = 3.3     # rough estimate used to count tokens
+PROMPT_OVERHEAD = 250     # tokens used by the instructions
+OUTPUT_ALLOWANCE = 700    # tokens we expect the reply to use
 
 MAP_PROMPT = ChatPromptTemplate.from_messages([
     (
@@ -42,22 +44,62 @@ REDUCE_PROMPT = ChatPromptTemplate.from_messages([
 ])
 
 
+class TokenBudget:
+    """Counts the tokens sent in the last 60 seconds and makes us wait when
+    the next request would go over the free-tier tokens-per-minute limit."""
+
+    def __init__(self, tokens_per_minute):
+        self.limit = tokens_per_minute
+        self.events = []  # list of (time, tokens)
+
+    def wait_for(self, tokens, progress=print):
+        while True:
+            now = time.time()
+            self.events = [(t, n) for t, n in self.events if now - t < 60]
+            used = sum(n for _, n in self.events)
+            if not self.events or used + tokens <= self.limit:
+                self.events.append((now, tokens))
+                return
+            wait = max(1, int(self.events[0][0] + 60 - now) + 1)
+            progress(f"  (waiting {wait}s to stay under the free-tier limit)")
+            time.sleep(wait)
+
+
+BUDGET = TokenBudget(TPM_BUDGET)
+
+
+def estimate_tokens(text):
+    return int(len(text) / CHARS_PER_TOKEN) + PROMPT_OVERHEAD + OUTPUT_ALLOWANCE
+
+
 def clean_output(text):
     """Turn special spaces and symbols the model may emit into plain text."""
-    return unicodedata.normalize("NFKC", text).strip()
+    text = unicodedata.normalize("NFKC", text)
+    text = text.replace("\u2010", "-").replace("\u2011", "-")
+    return text.strip()
 
 
-def invoke_with_retry(chain, inputs, retries=4):
-    """Call the LLM; if the free-tier rate limit is hit, wait and try again."""
+def invoke_with_budget(chain, text, progress=print, retries=4):
+    """Call the LLM once, waiting if needed to respect the rate limit."""
+    tokens = estimate_tokens(text)
     for attempt in range(1, retries + 1):
+        BUDGET.wait_for(tokens, progress)
         try:
-            return clean_output(chain.invoke(inputs).content)
+            return clean_output(chain.invoke({"text": text}).content)
         except Exception as error:
             message = str(error).lower()
-            is_rate_limit = "429" in message or "rate limit" in message
+            # Check 413 first: its message also contains "rate_limit"
+            if "413" in message or "request too large" in message:
+                raise RuntimeError(
+                    "A request was too large for the free-tier limit. "
+                    "Lower BATCH_CHARS in rag/summarize.py."
+                ) from error
+            is_rate_limit = (
+                "429" in message or "rate limit" in message or "rate_limit" in message
+            )
             if is_rate_limit and attempt < retries:
                 wait = 20 * attempt
-                print(f"  (rate limit reached, waiting {wait} seconds...)")
+                progress(f"  (rate limit reached, waiting {wait} seconds...)")
                 time.sleep(wait)
             else:
                 raise
@@ -77,30 +119,17 @@ def make_batches(texts, max_chars):
     return batches
 
 
-def run_in_parallel(chain, texts, progress, label):
-    """Run the chain on every text, several at a time, keeping the order."""
-    results = [None] * len(texts)
-    with ThreadPoolExecutor(max_workers=MAX_PARALLEL) as pool:
-        futures = {
-            pool.submit(invoke_with_retry, chain, {"text": text}): index
-            for index, text in enumerate(texts)
-        }
-        done = 0
-        for future in as_completed(futures):
-            results[futures[future]] = future.result()
-            done += 1
-            progress(f"  {label}: {done} of {len(texts)} done")
-    return results
-
-
 def summarize_texts(texts, llm, progress=print):
     """Map-reduce summary of a list of text pieces."""
     map_chain = MAP_PROMPT | llm
     reduce_chain = REDUCE_PROMPT | llm
 
-    # MAP: notes for every batch of text (several batches at once)
+    # MAP: notes for every batch of text, one batch at a time
     batches = make_batches(texts, BATCH_CHARS)
-    notes = run_in_parallel(map_chain, batches, progress, "reading")
+    notes = []
+    for number, batch in enumerate(batches, start=1):
+        progress(f"  reading part {number} of {len(batches)}...")
+        notes.append(invoke_with_budget(map_chain, batch, progress))
 
     # REDUCE: merge notes in rounds until they fit in one call
     while len(notes) > 1 and sum(len(n) for n in notes) > COMBINE_CHARS:
@@ -108,11 +137,22 @@ def summarize_texts(texts, llm, progress=print):
         if len(groups) == len(notes):
             break  # cannot shrink further
         progress(f"  merging {len(notes)} sets of notes into {len(groups)}...")
-        notes = run_in_parallel(reduce_chain, groups, progress, "merging")
+        notes = [invoke_with_budget(reduce_chain, g, progress) for g in groups]
 
     progress("  writing the final summary...")
-    return invoke_with_retry(reduce_chain, {"text": "\n\n".join(notes)})
+    return invoke_with_budget(reduce_chain, "\n\n".join(notes), progress)
 
+REFERENCE_HINTS = (
+    "arxiv preprint", "in proceedings", "proceedings of", "journal of",
+    "conference on", "association for computational",
+)
+
+
+def looks_like_references(text):
+    """True for chunks that look like a bibliography."""
+    lowered = " ".join(text.lower().split())
+    hits = sum(lowered.count(hint) for hint in REFERENCE_HINTS)
+    return hits >= 3
 
 def summarize_documents(chunks, llm, only_file=None, progress=print):
     """Summarize each uploaded file separately.
@@ -124,10 +164,14 @@ def summarize_documents(chunks, llm, only_file=None, progress=print):
         name = os.path.basename(chunk.metadata.get("source", "document"))
         by_file.setdefault(name, []).append(chunk.page_content)
 
-    summaries = {}
+        summaries = {}
     for name, texts in by_file.items():
         if only_file and name != only_file:
             continue
-        progress(f"Summarizing {name} ({len(texts)} chunks)...")
-        summaries[name] = summarize_texts(texts, llm, progress)
+        kept = [t for t in texts if not looks_like_references(t)]
+        progress(
+            f"Summarizing {name} ({len(kept)} of {len(texts)} chunks; "
+            f"skipping {len(texts) - len(kept)} that look like references)..."
+        )
+        summaries[name] = summarize_texts(kept, llm, progress)
     return summaries
