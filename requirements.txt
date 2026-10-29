@@ -9,3 +9,4 @@ langchain-chroma
 sentence-transformers
 pypdf
 python-dotenv
+rank-bm25

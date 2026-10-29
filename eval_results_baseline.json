@@ -1,0 +1,403 @@
+[
+  {
+    "kind": "in",
+    "question": "What optimizer was used?",
+    "answer": "The models were trained using the Adam optimizer.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/paper.pdf p.7",
+      "data/bert.pdf p.2",
+      "data/paper.pdf p.1"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "How many training steps did the big models run?",
+    "answer": "The big models were trained for **300,000 steps**.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/paper.pdf p.7",
+      "data/bert.pdf p.8",
+      "data/paper.pdf p.7"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "What BLEU score did the model get on English-to-German translation?",
+    "answer": "The model achieved a BLEU score of **28.4** on the English‐to‐German translation task.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/paper.pdf p.8",
+      "data/paper.pdf p.8",
+      "data/paper.pdf p.8"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "How many P100 GPUs were used for training?",
+    "answer": "Eight P100 GPUs were used for training.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/paper.pdf p.7",
+      "data/paper.pdf p.8",
+      "data/paper.pdf p.2"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "What value of warmup_steps was used?",
+    "answer": "The models were trained with **warmup_steps = 4000**.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/paper.pdf p.7",
+      "data/bert.pdf p.2",
+      "data/bert.pdf p.3"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "How many sentence pairs are in the WMT 2014 English-German dataset?",
+    "answer": "The WMT 2014 English‐German dataset contains about **4.5 million sentence pairs**.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/paper.pdf p.7",
+      "data/paper.pdf p.9",
+      "data/bert.pdf p.4"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "How large is the shared vocabulary for byte-pair encoding?",
+    "answer": "The shared source‐target vocabulary used for byte‐pair encoding contains about **37 000 tokens**.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/paper.pdf p.7",
+      "data/paper.pdf p.9",
+      "data/paper.pdf p.8"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "What dropout rate did the English-to-French big model use?",
+    "answer": "The English‐to‐French big model used a dropout rate of **Pdrop = 0.1**.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/paper.pdf p.8",
+      "data/paper.pdf p.8",
+      "data/paper.pdf p.8"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "By what factor are the dot products scaled in attention?",
+    "answer": "The dot products are scaled by a factor of 1 ⁄ √dk — they are divided by the square root of the key dimension.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/paper.pdf p.4",
+      "data/paper.pdf p.4",
+      "data/paper.pdf p.4"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "Which network components does the Transformer dispense with?",
+    "answer": "The Transformer discards recurrence—it does not use any recurrent network components, relying instead entirely on attention mechanisms.",
+    "refused": false,
+    "correct": false,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/paper.pdf p.3",
+      "data/paper.pdf p.2",
+      "data/paper.pdf p.8"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "What does BERT stand for?",
+    "answer": "BERT stands for **Bidirectional Encoder Representations from Transformers**.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/bert.pdf p.1",
+      "data/bert.pdf p.3",
+      "data/bert.pdf p.1"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "On how many NLP tasks did BERT obtain new state-of-the-art results?",
+    "answer": "BERT obtained new state‐of‐the‐art results on **11 NLP tasks**.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": false,
+      "unsupported": "new state-of-the-art results on 11 NLP tasks",
+      "relevant": true
+    },
+    "chunks": [
+      "data/bert.pdf p.3",
+      "data/bert.pdf p.4",
+      "data/bert.pdf p.5"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "What GLUE score did BERT achieve?",
+    "answer": "BERT LARGE achieved a GLUE score of **80.5**.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/bert.pdf p.6",
+      "data/bert.pdf p.5",
+      "data/bert.pdf p.6"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "What MultiNLI accuracy did BERT reach?",
+    "answer": "BERT LARGE achieved an MNLI (Multi‐NLI) accuracy of **80.5** on the official GLUE leaderboard.",
+    "refused": false,
+    "correct": false,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/bert.pdf p.6",
+      "data/bert.pdf p.6",
+      "data/bert.pdf p.3"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "What was the SQuAD v1.1 Test F1 score?",
+    "answer": "The SQuAD v1.1 Test F1 score reported in the table is **93.2** (achieved by the BERTLARGE ensemble fine‐tuned with TriviaQA).",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/bert.pdf p.7",
+      "data/bert.pdf p.6",
+      "data/bert.pdf p.6"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "What was the SQuAD v2.0 Test F1 score?",
+    "answer": "The SQuAD v2.0 Test F1 score reported is **83.1**.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/bert.pdf p.7",
+      "data/bert.pdf p.7",
+      "data/bert.pdf p.6"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "What data was BERT pre-trained on?",
+    "answer": "BERT was pre‐trained on two large text sources: the BooksCorpus (about 800 million words) and Wikipedia (about 2,500 million words).",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/bert.pdf p.3",
+      "data/bert.pdf p.1",
+      "data/bert.pdf p.3"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "What percentage of tokens are masked in the masked language model?",
+    "answer": "15% of the tokens are masked in the masked language model.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/bert.pdf p.4",
+      "data/bert.pdf p.2",
+      "data/bert.pdf p.4"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "How many parameters does BERT-base have?",
+    "answer": "I couldn't find that in the document.",
+    "refused": true,
+    "correct": false,
+    "judge": null,
+    "chunks": [
+      "data/bert.pdf p.3",
+      "data/bert.pdf p.6",
+      "data/bert.pdf p.7"
+    ]
+  },
+  {
+    "kind": "in",
+    "question": "What are the two pre-training tasks of BERT?",
+    "answer": "The two pre‐training tasks used for BERT are **Masked Language Modeling (MLM)** and **Next Sentence Prediction (NSP)**.",
+    "refused": false,
+    "correct": true,
+    "judge": {
+      "faithful": true,
+      "unsupported": "",
+      "relevant": true
+    },
+    "chunks": [
+      "data/bert.pdf p.3",
+      "data/bert.pdf p.1",
+      "data/bert.pdf p.3"
+    ]
+  },
+  {
+    "kind": "out",
+    "question": "Who won the football World Cup?",
+    "answer": "I couldn't find that in the document.",
+    "refused": true,
+    "correct": null,
+    "judge": null,
+    "chunks": [
+      "data/bert.pdf p.7",
+      "data/bert.pdf p.7",
+      "data/paper.pdf p.8"
+    ]
+  },
+  {
+    "kind": "out",
+    "question": "What is the capital of France?",
+    "answer": "I couldn't find that in the document.",
+    "refused": true,
+    "correct": null,
+    "judge": null,
+    "chunks": [
+      "data/paper.pdf p.8",
+      "data/paper.pdf p.8",
+      "data/bert.pdf p.7"
+    ]
+  },
+  {
+    "kind": "out",
+    "question": "What BLEU score did GPT-4 get on English-to-German translation?",
+    "answer": "I couldn't find that in the document.",
+    "refused": true,
+    "correct": null,
+    "judge": null,
+    "chunks": [
+      "data/paper.pdf p.8",
+      "data/paper.pdf p.8",
+      "data/paper.pdf p.8"
+    ]
+  },
+  {
+    "kind": "out",
+    "question": "What accuracy did ResNet achieve on ImageNet?",
+    "answer": "I couldn't find that in the document.",
+    "refused": true,
+    "correct": null,
+    "judge": null,
+    "chunks": [
+      "data/bert.pdf p.6",
+      "data/bert.pdf p.6",
+      "data/bert.pdf p.7"
+    ]
+  },
+  {
+    "kind": "out",
+    "question": "How many parameters does GPT-3 have?",
+    "answer": "I couldn't find that in the document.",
+    "refused": true,
+    "correct": null,
+    "judge": null,
+    "chunks": [
+      "data/paper.pdf p.8",
+      "data/bert.pdf p.6",
+      "data/bert.pdf p.2"
+    ]
+  }
+]
